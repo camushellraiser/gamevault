@@ -1,69 +1,59 @@
-# GameVault v0.2 — Private Cloud
+# GameVault v0.3 — Smart Library
 
-A premium, English-language, mobile-first video-game inventory for **five platforms**: PlayStation 5, PlayStation 4, Nintendo Switch 2, Nintendo Switch / OLED, and Windows PC.
+Personal, private, mobile-first video game inventory. Hosted at `https://camushellraiser.github.io/gamevault/` using GitHub Pages + Firebase Authentication + Firestore. **No NAS, fixed IP, home server or paid hosting is required.**
 
-**Architecture:** GitHub Pages (public static UI) + Firebase Authentication (Google login) + Cloud Firestore (private collection). No NAS, home IP, self-hosted service, or VPN is required.
+## What changed in v0.3
 
-## What's working
+- **Smart Add:** live title suggestions from Wikidata, platform-filtered curated matches, and optionally IGDB. Explicitly warns when a source does not validate the selected platform.
+- **Smart Edit:** choosing a suggested game title corrects its name and recovers available metadata in the edit form while **preserving the existing Firestore record ID, physical/digital ownership and editions**.
+- **Restore Metadata:** optional re-fetch of verified source fields (year, publisher, developer, genre). Missing fields are never fabricated.
+- **Browse Covers:** Plex-style candidate gallery. Select an image visually, preview it, then save it; the gallery does **not** silently mark artwork as an authentic US platform-specific cover.
+- **Smart Bulk Import:** paste up to 50 titles per batch, match through the same discovery layer, review format and matches before applying.
+- **Cloud compatibility:** newly introduced `metadataSource`, `metadataId`, `metadataVerified`, and `coverSource` are persisted in Firestore. Old documents remain compatible. No automatic migration or destructive update is needed.
+- An **optional** Cloudflare Worker implementation (`worker/`) supports IGDB live search, multiple cover variants, and edition data, with secrets stored server-side and Firebase owner authentication on every request.
 
-- Google sign-in and private, UID-gated Firestore sync across devices.
-- Cover-first responsive library, platform views, search, sort, format filters, details.
-- Quick Add with a small reference catalogue **or manual title**.
-- Bulk Import by pasting game titles; manual metadata matches can be corrected later.
-- One record per title/platform; physical + digital formats on the same record.
-- Independent edition fields for physical/digital; editable with free-text override.
-- Recoverable delete / restore (`deletedAt`); no hard deletion via security rules.
-- PS4 backward-compatibility view in the PS5 section (opt-in per owned PS4 game).
-- JSON/CSV export, private JSON import including first seven games.
-- Firestore owner-UID gate shows a **copyable UID** on initial sign-in.
+## Current catalog data availability
 
-**Not implemented yet:** Full IGDB/RAWG live search, automatic US edition cover matching, image hosting/upload, managed edition picker from official stores, Cloudflare Workers. Existing cover URLs are candidates only, marked for review. Firebase setup is preconfigured from the user's supplied web app settings. The application is real, but only live validation in the user's Firebase project can confirm end-to-end login and Firestore access.
+| Capability | Works immediately after website update | With IGDB Worker deployed |
+|---|---|---|
+| Reference suggestions for known games | Yes | Yes |
+| Live public title search via Wikidata | Yes, when Wikidata API is reachable | Yes, fallback |
+| Platform filtering | Reference titles only | IGDB platform IDs |
+| Automatic publisher/year | For reference titles and some Wikidata years | Richer IGDB fields |
+| Cover gallery | Existing artwork and compatible reference candidates | IGDB game and localized covers added |
+| Editions | Known manually curated editions, editable at any time | IGDB game-version suggestions if recorded |
+| Verified US PS5 / Switch box art | No — requires review | Not guaranteed: verify art before approval |
 
-## Important: private data is NOT in the public repository
+**Important:** For live IGDB cover suggestions, the Worker MUST be configured. The GitHub Pages frontend cannot directly call IGDB with a private Twitch secret. Avoid putting Twitch Client Secret in this repository, client JS, Firebase config or screenshots. Sources may lack region/platform coverage; the app never claims to verify artwork automatically.
 
-The distributable ZIP includes **only the application files**, never the user's owned games. The seven initial records are supplied separately as `GameVault_Private_Seed.json` and must be imported from the authenticated GameVault app **after owner rules are deployed**. Do not upload the seed JSON to GitHub.
+## No need to recreate GitHub / Firebase
 
-## Deployment checklist (do these in order)
+1. Your repo `camushellraiser/gamevault`, Google Authentication, Firestore and Pages are **already created**.
+2. Deploy updated frontend files to the same repository / branch (e.g. merge the `gamevault-v0.3-smart-library` PR). This updates the UI automatically.
+3. Reload the published site. Your Firestore inventory remains **unchanged**. You should still see the same seven initial games.
+4. Open the Spider-Man entry → **Edit Game** → search `Spider-Man 2` → select the result → inspect metadata → **Save Changes**. The record ID and ownership do not change.
+5. Open Resident Evil Requiem → **Edit Game** → **Browse Covers**. Until the Worker is deployed, the gallery displays current/reference candidates, not the full IGDB feed.
 
-1. On GitHub, create a repository named `gamevault` (public visibility is compatible with free GitHub Pages), or use an existing one. Upload the **contents** of this folder at repository root (`index.html`, `app.js`, etc.), not the ZIP itself.
-2. Under GitHub repo **Settings → Pages**, select **Deploy from a branch → main → /(root)** and save. Wait for GitHub Pages to report the published URL: `https://camushellraiser.github.io/gamevault/`.
-3. In Firebase Console, keep **Authentication → Sign-in method → Google enabled** and **Authorized domains** containing `camushellraiser.github.io` (already configured by user).
-4. Open the published GameVault URL and choose **Continue with Google**. The initial Firestore read will be denied (the current rules are `allow read, write: if false;`). This is **expected**.
-5. GameVault displays your Firebase **UID**. Click **Copy UID**. Keep it private if convenient; it is an identifier, not a password.
-6. In Firebase Console → **Firestore Database → Rules**, copy `firestore.rules` and replace the exact text `YOUR_FIREBASE_AUTH_UID` with the UID from step 5. **Publish**. Do **not** change the rule to `request.auth != null` alone; that would let every Google account access records.
-7. Return to GameVault and click **Retry access**. The private collection will initially show zero records.
-8. Click **Import JSON** and select the separate file `GameVault_Private_Seed.json`; confirm the import. Your seven games will be saved to Firestore.
-9. Open GameVault on your iPhone and sign in with the **same Google account**. The library will sync through Firestore. For Home Screen installation, use Safari Share → Add to Home Screen.
-10. Test one edition correction, physical + digital toggle, trash / restore, and JSON export. If satisfied, proceed to live game API integration.
+## Enable richer IGDB results when ready (one-time optional setup)
 
-## Security properties
+See [worker/README.md](worker/README.md). Requirements: a free Twitch developer application (IGDB API) and a Cloudflare account to deploy the Worker; Cloudflare free usage thresholds apply. You must configure the Worker before gallery suggestions can include all available IGDB cover variants. A user login session does **not** authorize others: the Worker verifies Firebase-signed JWT tokens, project ID and exact owner UID.
 
-- Firestore rules restrict `/users/{uid}/games/{gameId}` to exactly one pinned Firebase Auth UID and block all other paths. Irreversible delete is disabled.
-- No owned game data or API server secrets are committed to the public repository. The Firebase web config (including `apiKey`) is a browser-app identifier **not a Firestore admin secret**.
-- Google login alone does not grant access. Firestore rules are the real access control.
-- Do not use the Firebase service account private key anywhere in this static app.
-- Users without the configured owner UID cannot read or write the collection.
-- External cover candidates load from third-party hosts. Their durability, region, edition and licensing remain unverified.
-- This app only requests the user's own Firestore path and doesn't perform an automatic public inventory dump.
+## Safety and scope
 
-## Limitations and future work
+- The **private inventory is in Firestore**, never in the GitHub repository.
+- Ownership records are never replaced by a catalog lookup; the change is saved only after explicit user action.
+- The catalog API Worker is optional and secrets are excluded from version control.
+- The public website includes Firebase web app config, which is not a service-account key.
+- `firestore.rules` in the repository is a **template**, not deployed by GitHub Pages; don't replace existing Firebase rules without validating them first.
+- No official platform/edition cover is considered US-verified unless you explicitly approve it.
+- Metadata from Wikidata may be incomplete; suggestions aren't proof that a game exists for the selected console.
+- Third-party images may cease to be accessible later. A chosen URL is stored in Firestore; no image file is currently copied to Firebase Storage.
 
-- Live catalogue search still uses a small public reference list, plus manual input. Do **not** assume all platform editions are in its dropdown.
-- The client currently stores metadata mostly as plain Firestore document fields; when adding a commercial game API, retain immutable owned-record IDs and separate edition fields.
-- Firebase/Cloudflare free tiers have quotas, subject to change. No promise of indefinite cost-free operation is made.
-- Firestore is cloud-only in this release; no local offline editing queue or conflict-resolution UI.
-- `firestore.rules` is a **template**. Publishing it in Firebase Console is a separate manual step; including the file in GitHub does not deploy rules.
+## Files
 
-## Contents
-
-- `index.html` — app shell
-- `styles.css`, `cloud.css` — visual system and owner-login overlay
-- `data.js` — public reference catalogue / five platform definitions, **no owned records**
-- `app.js` — UI, Add, Edit, import, trash, filters, JSON/CSV exports
-- `cloud.js` — Firebase Auth + Firestore adapter (SDK 13.4.0)
-- `firestore.rules` — owner-only Firestore rules template; requires UID replacement in Firebase Console
-- `manifest.webmanifest`, `assets/favicon.svg`, `.nojekyll` — PWA / GitHub Pages resources
-
-## Public repo hygiene
-
-Never commit `GameVault_Private_Seed.json`, private export backups, service-account JSON, passwords, Google OAuth client secrets, Cloudflare API tokens, or any Firebase Admin SDK credentials.
+- `index.html`, `styles.css`, `cloud.css` — app shell and premium UI
+- `app.js` — inventory, smart Add / Edit / Bulk, search, trash, export
+- `discovery.js`, `discovery-config.js`, `discovery.css` — title suggestions, metadata retrieval, gallery
+- `cloud.js` — Google login + Firestore with owner-only access
+- `data.js` — public reference catalog entries only, **not** your owned games
+- `worker/` — optional secure IGDB proxy, separate deployment

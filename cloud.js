@@ -70,7 +70,7 @@ function normalizeGame(g){
   if(!g.physical&&!g.digital)throw new Error('At least one ownership format is required.');
   const permitted=['id','catalogKey','title','platform','physical','digital','physicalEdition','digitalEdition',
     'year','publisher','developer','genre','notes','coverUrl','coverVerified','review','ps5Compatible',
-    'createdAt','updatedAt','deletedAt'];
+    'createdAt','updatedAt','deletedAt','metadataSource','metadataId','metadataVerified','coverSource'];
   const out={};
   for(const k of permitted){if(g[k]!==undefined&&g[k]!==null)out[k]=g[k];}
   if(!out.title && !out.catalogKey)throw new Error('Game title is missing.');

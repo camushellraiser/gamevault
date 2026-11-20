@@ -1,0 +1,30 @@
+/* GameVault v0.3 — Smart lookup and cover picker */
+.gv-subheading{font-family:var(--font);font-size:12px;color:#96a8ce;font-weight:500}
+.gv-mini-link{border:0;background:none;color:#a9bcff;padding:8px 0;text-align:left;text-decoration:underline;text-underline-offset:3px;font-size:12px;font-weight:700}
+.gv-mini-link:hover{color:white}
+.gv-match-image{width:38px;height:46px;border:1px solid #414e6a;border-radius:6px;overflow:hidden;background:#243351;display:grid;place-items:center;flex-shrink:0;font-size:18px}
+.gv-match-image img{display:block;width:100%;height:100%;object-fit:cover}
+.gv-match{min-height:64px}
+.gv-match span:nth-child(2){flex:1;min-width:0}
+.gv-search-state{padding:10px 13px;color:#8a9cbe;font-size:11px;line-height:1.5;background:#0c1423;border-bottom:1px solid #303b54}
+.gv-meta-confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #45628c;border-radius:12px;padding:14px;background:#192743}
+.gv-meta-confirm strong{display:block;font-family:var(--heading);font-size:16px;margin:6px 0 3px}
+.gv-meta-confirm small{color:#9fb0d3;display:block;font-size:11px}
+.gv-good{font-weight:700;color:#72e7be;font-size:11px}
+#metadata-preview{margin:-5px 0 17px}
+.gv-advanced{margin:9px 0 19px;border:1px solid #34405a;border-radius:12px;padding:12px 15px;background:#0c1526}
+.gv-advanced summary{cursor:pointer;color:#aabbea;font-size:12px;font-weight:700;list-style:revert}
+.gv-advanced .form-field{margin-top:13px;margin-bottom:3px}
+#edit-cover-gallery{margin:16px 0 18px;padding:18px;background:#0b1425;border:1px solid #45587a;border-radius:15px}
+.gv-gallery-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:18px;font-family:var(--heading)}
+.gv-gallery-note{color:#9aaac6;font-size:12px;line-height:1.5;margin:9px 0 16px}
+.gv-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:12px;max-height:390px;overflow-y:auto}
+.gv-art-card{padding:8px;background:#1d2b43;color:#f2f5fc;border:1px solid #344967;border-radius:12px;text-align:left;transition:.2s}
+.gv-art-card:hover,.gv-art-card:focus-visible{border-color:#8b9dfc;background:#2b3b5c;transform:translateY(-2px)}
+.gv-art-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:contain;background:#0c1321;border-radius:7px;margin-bottom:8px}
+.gv-art-card strong{display:block;line-height:1.35;font-size:12px;min-height:30px}
+.gv-art-card small{display:block;color:#a1aed1;font-size:10px;margin-top:4px}
+.gv-cover-empty,.gv-cover-load{padding:16px;border:1px dashed #46577a;color:#a7b6d3;border-radius:10px;font-size:12px;line-height:1.6;grid-column:1/-1}
+.gv-chosen-cover{width:80px;height:108px;overflow:hidden;border:1px solid #536a99;border-radius:9px;background:#1d3054}
+.gv-chosen-cover img{display:block;width:100%;height:100%;object-fit:contain}
+@media(max-width:720px){.gv-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.gv-gallery-title{font-size:15px}.gv-meta-confirm{align-items:flex-start;flex-direction:column}.gv-art-card img{max-height:195px}.gv-mini-link{min-height:30px}}

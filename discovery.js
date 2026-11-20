@@ -18,12 +18,7 @@
     const url = new URL(endpoint + '/' + action);
     Object.entries(params).forEach(([key,value])=>url.searchParams.set(key, String(value)));
     const response = await fetch(url.href,{headers:{Authorization:'Bearer '+token},signal});
-    if(!response.ok) {
-      let errorPayload={};
-      try { errorPayload=await response.json(); } catch {}
-      const detail=String(errorPayload?.error||'Request failed').slice(0,140);
-      throw new Error('HTTP '+response.status+': '+detail);
-    }
+    if(!response.ok) { let errorPayload={}; try { errorPayload=await response.json(); } catch {} const detail=String(errorPayload?.error||'Request failed').slice(0,140); throw new Error('HTTP '+response.status+': '+detail); }
     return response.json();
   }
   async function wikidata(query, signal) {
@@ -44,16 +39,46 @@
     let owned=local(q,platform), remote=[], source='local', note='Reference matches (platform-filtered).', igdbFailure='';
     if(endpoint){try {const result=await worker('search',{q,platform},signal);remote=result?.results||[];source='IGDB';note='IGDB results filtered to this platform.';} catch(e){if(e.name==='AbortError')throw e;igdbFailure=String(e?.message||'connection failed');note='IGDB is unavailable. Showing other suggestions.';}}
     if(!remote.length){try{remote=await wikidata(q,signal);source=remote.length?'Wikidata + local':'local';note=remote.length?'Wikidata results require platform confirmation; reference matches are platform-filtered.':'Only reference matches available; live search unavailable.';}catch(e){if(e.name==='AbortError')throw e;note='Live suggestions unavailable. You can still select a reference title or enter a custom title.';}}
-    if(igdbFailure) note+=' IGDB diagnostic: '+igdbFailure+'.';
+    if(igdbFailure)note+=' IGDB diagnostic: '+igdbFailure+'.';
     const result={results:dedupe([...owned,...remote]).slice(0,15),source,note};
     searchCache.set(key,result);
     if(searchCache.size>45)searchCache.delete(searchCache.keys().next().value);
     return result;
   }
-  async function details(candidate,{signal}={}) {
+  // IGDB queries have already been filtered by the selected platform at the Worker.
+  // Do not confuse IGDB numeric platform IDs with GameVault platform slugs.
+  function platformConfirmed(candidate,platform){
+    return Boolean(candidate && (candidate.source==='igdb' ||
+      (Array.isArray(candidate.platforms) && candidate.platforms.includes(platform))));
+  }
+  const detailsCache=new Map();
+  async function details(candidate,{signal,platform}={}) {
     if(!candidate)return null;
-    if(candidate.source==='curated')return candidate;
-    if(candidate.source==='igdb' && endpoint){let res=await worker('game',{id:String(candidate.id).replace(/^igdb:/,'')},signal);return {...candidate,...res?.game,source:'igdb'};}
+    if(candidate.source==='curated' && endpoint && platform){
+      // Reference entries are useful fallbacks, but we still hydrate them with live
+      // metadata and real edition names when an exact IGDB title is available.
+      try{
+        const found=await worker('search',{q:candidate.title,platform},signal);
+        const hit=(found?.results||[]).find(x=>norm(x.title)===norm(candidate.title));
+        if(hit){
+          const remote=await details({...hit,source:'igdb'},{signal,platform});
+          return {...candidate,...remote,
+            key:candidate.key,
+            editions:[...new Set([...(candidate.editions||[]),...(remote.editions||[])])],
+            source:'igdb',metadataId:remote.id};
+        }
+      }catch(error){if(error?.name==='AbortError')throw error;}
+      return candidate;
+    }
+    if(candidate.source==='igdb' && endpoint){
+      const key=String(candidate.id);
+      if(detailsCache.has(key))return {...candidate,...detailsCache.get(key)};
+      const res=await worker('game',{id:key.replace(/^igdb:/,'')},signal);
+      const data=res?.game||{};
+      if(Object.keys(data).length)detailsCache.set(key,data);
+      if(detailsCache.size>100)detailsCache.delete(detailsCache.keys().next().value);
+      return {...candidate,...data,source:'igdb'};
+    }
     if(candidate.source==='wikidata'){
       // Wikidata details are partial; do NOT fill publisher/editions with guesses.
       const id=String(candidate.id).replace(/^wikidata:/,'');
@@ -81,5 +106,5 @@
     }
     return {covers:list,note:endpoint?'Cover candidates from IGDB and references. Verify US/platform manually before approval.':'For more cover variants, connect the optional IGDB Worker. Existing references are shown now; no image is automatically US-verified.'};
   }
-  window.GVDiscovery={search,details,covers,curated,local,enabled:Boolean(endpoint)};
+  window.GVDiscovery={search,details,covers,curated,local,platformConfirmed,enabled:Boolean(endpoint)};
 })();

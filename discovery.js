@@ -18,7 +18,12 @@
     const url = new URL(endpoint + '/' + action);
     Object.entries(params).forEach(([key,value])=>url.searchParams.set(key, String(value)));
     const response = await fetch(url.href,{headers:{Authorization:'Bearer '+token},signal});
-    if(!response.ok) throw new Error('Catalog service: '+response.status);
+    if(!response.ok) {
+      let errorPayload={};
+      try { errorPayload=await response.json(); } catch {}
+      const detail=String(errorPayload?.error||'Request failed').slice(0,140);
+      throw new Error('HTTP '+response.status+': '+detail);
+    }
     return response.json();
   }
   async function wikidata(query, signal) {
@@ -36,9 +41,10 @@
     if(q.length<2)return {results:[],note:'Enter at least two characters.',source:'none'};
     const key=platform+':'+norm(q);
     if(searchCache.has(key))return searchCache.get(key);
-    let owned=local(q,platform), remote=[], source='local', note='Reference matches (platform-filtered).';
-    if(endpoint){try {const result=await worker('search',{q,platform},signal);remote=result?.results||[];source='IGDB';note='IGDB results filtered to this platform.';} catch(e){if(e.name==='AbortError')throw e;note='IGDB is unavailable. Showing other suggestions.';}}
+    let owned=local(q,platform), remote=[], source='local', note='Reference matches (platform-filtered).', igdbFailure='';
+    if(endpoint){try {const result=await worker('search',{q,platform},signal);remote=result?.results||[];source='IGDB';note='IGDB results filtered to this platform.';} catch(e){if(e.name==='AbortError')throw e;igdbFailure=String(e?.message||'connection failed');note='IGDB is unavailable. Showing other suggestions.';}}
     if(!remote.length){try{remote=await wikidata(q,signal);source=remote.length?'Wikidata + local':'local';note=remote.length?'Wikidata results require platform confirmation; reference matches are platform-filtered.':'Only reference matches available; live search unavailable.';}catch(e){if(e.name==='AbortError')throw e;note='Live suggestions unavailable. You can still select a reference title or enter a custom title.';}}
+    if(igdbFailure) note+=' IGDB diagnostic: '+igdbFailure+'.';
     const result={results:dedupe([...owned,...remote]).slice(0,15),source,note};
     searchCache.set(key,result);
     if(searchCache.size>45)searchCache.delete(searchCache.keys().next().value);

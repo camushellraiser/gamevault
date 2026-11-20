@@ -22,3 +22,11 @@ Built on top of the existing private Firebase/Firestore library. No migration or
 Update these five files on the existing `camushellraiser/gamevault` main branch: `app.js`, `discovery.js`, `discovery.css`, `index.html`, `README.md`. The existing Firebase rules, Cloudflare Worker, `cloud.js`, `data.js`, and your private inventory do not need changing.
 
 Current app: https://camushellraiser.github.io/gamevault/
+
+## iPhone Google sign-in recovery (v0.4)
+
+- `cloud.js` invokes Google's popup directly within the user's tap instead of awaiting `setPersistence`, avoiding one cause of iOS popup blocking.
+- If no Google result returns, a 15-second watchdog shows Retry and Copy Safari Link instead of remaining stuck on `Opening Google...`.
+- Home Screen / standalone PWA sessions on iOS may block OAuth popups. If that happens, use the same URL in full Safari: https://camushellraiser.github.io/gamevault/
+- No Firebase Firestore rules or database documents changed. Desktop authentication uses the same Firebase account.
+- Production sign-in on the user's iPhone remains to be validated. This fix does not guarantee standalone PWA authentication across all iOS browsers.

@@ -20,3 +20,8 @@
 .auth-spinner{width:32px;height:32px;border:3px solid #334263;border-top-color:#b6aaff;border-radius:50%;animation:gvSpin .9s linear infinite}
 @keyframes gvSpin{to{transform:rotate(360deg)}}
 .import-collection-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #3b4562;background:#1a243a;color:#d5e3ff;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:700}
+
+/* GameVault v0.4 iPhone Google sign-in fallback */
+.auth-browser-tip{margin-top:18px;border:1px solid #41547b;background:#13213a;padding:13px 14px;border-radius:12px;color:#bbcae6;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.auth-browser-tip strong{color:#e4ecff}
+.auth-site-url{display:block;margin-top:8px;color:#adc1ff;font-size:11px;overflow-wrap:anywhere}

@@ -1,0 +1,10 @@
+# Personal inventory and secrets do not belong in a public Pages repository.
+*Private*Seed*.json
+*private*seed*.json
+*backup*.json
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+.env
+.env.*
+node_modules/
+.DS_Store

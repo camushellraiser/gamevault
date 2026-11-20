@@ -1,0 +1,22 @@
+/* Auth gate: covers the entire interface until owner-only Firestore rules permit reading. */
+.auth-root[hidden]{display:none!important}
+.auth-root{position:fixed;inset:0;z-index:9999;overflow-y:auto;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 70% 12%,#18244c 0,transparent 53%),radial-gradient(ellipse at 18% 82%,#1a1636 0,transparent 50%),#080b12;color:#edf3ff;font-family:'DM Sans',Arial,sans-serif}
+.auth-card{width:min(100%,480px);padding:clamp(26px,6vw,44px);border:1px solid rgba(153,177,242,.18);border-radius:22px;background:rgba(20,29,49,.92);box-shadow:0 35px 100px #0008}
+.auth-symbol{font-size:36px;color:#a5aeff;line-height:1}
+.auth-kicker{font-size:11px;letter-spacing:.14em;font-weight:800;color:#8fa0bd;margin:26px 0 10px}
+.auth-card h2{font-family:'Outfit',Arial,sans-serif;font-size:clamp(26px,5vw,38px);letter-spacing:-.025em;line-height:1.14;margin:0 0 16px}
+.auth-card p{color:#b5c2d8;font-size:14px;line-height:1.7;margin:0 0 22px}
+.auth-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.auth-actions button,.auth-account button{font-family:inherit;cursor:pointer;border-radius:10px;border:1px solid #57638d;padding:11px 17px;font-weight:700;font-size:13px}
+.auth-primary{background:linear-gradient(110deg,#7894ff,#a78bfa);color:#10172a;border:none!important}
+.auth-secondary{background:#212c46;color:#dce7ff}
+.auth-actions button:disabled{opacity:.65;cursor:wait}
+.auth-account{border:1px solid #38435c;border-radius:12px;background:#101827;padding:16px;margin:20px 0;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}
+.auth-account span{font-size:13px;font-weight:700}
+.auth-account small,.auth-footnote{font-size:11px;color:#8ea1bc}
+.auth-account code{color:#d6f0ff;font-size:12px;word-break:break-all;background:#202a3a;padding:9px;border-radius:6px}
+.auth-account button{align-self:flex-start;background:transparent;color:#d1e0fc}
+.auth-footnote{margin-top:22px}
+.auth-spinner{width:32px;height:32px;border:3px solid #334263;border-top-color:#b6aaff;border-radius:50%;animation:gvSpin .9s linear infinite}
+@keyframes gvSpin{to{transform:rotate(360deg)}}
+.import-collection-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid #3b4562;background:#1a243a;color:#d5e3ff;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:13px;font-weight:700}

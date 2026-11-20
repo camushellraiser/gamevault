@@ -7,7 +7,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut,
-  onAuthStateChanged, setPersistence, browserLocalPersistence
+  onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js';
 import {
   getFirestore, collection, doc, onSnapshot, writeBatch
@@ -31,6 +31,15 @@ let authorized = false;
 let unsubscribe = null;
 let serverDocs = new Map();
 let pending = Promise.resolve();
+let signInSequence = 0;
+let signInWatchdog = null;
+const SITE_URL = 'https://camushellraiser.github.io/gamevault/';
+function inStandaloneMode() {
+  return navigator.standalone === true || Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches);
+}
+function clearSignInWatchdog() {
+  if (signInWatchdog !== null) { clearTimeout(signInWatchdog); signInWatchdog = null; }
+}
 const platforms = new Set(['ps5','ps4','switch','switch2','pc']);
 
 function e(value) {return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -45,9 +54,48 @@ function locked(message='Firestore currently denies access. This is expected unt
     `<div class="auth-actions"><button class="auth-primary" data-auth-action="retry">Retry access</button><button class="auth-secondary" data-auth-action="signout">Switch account</button></div>`,userInfo());
 }
 function ready(){authRoot.hidden=true;authRoot.innerHTML='';}
+function safariInstructions() {
+  return `<div class="auth-browser-tip">On iPhone: if Google does not open from the Home Screen app, open GameVault directly in <strong>Safari</strong> and sign in there. Safari and the installed app may keep separate sessions.<br/><span class="auth-site-url">${e(SITE_URL)}</span></div>`;
+}
 function signedOut() {
   card('Your collection, securely stored.', 'Sign in with Google to open your private game collection. Only the owner UID defined in Firestore rules can access game records.',
-    `<div class="auth-actions"><button class="auth-primary" data-auth-action="signin">Continue with Google</button></div><div class="auth-footnote">GameVault · PlayStation · Nintendo · PC</div>`);
+    `<div class="auth-actions"><button class="auth-primary" data-auth-action="signin">Continue with Google</button>${inStandaloneMode()?'<button class="auth-secondary" data-auth-action="copy-site">Copy Safari link</button>':''}</div>${inStandaloneMode()?safariInstructions():''}<div class="auth-footnote">GameVault · PlayStation · Nintendo · PC</div>`);
+}
+function signInHelp(message) {
+  if (currentUser) return;
+  card('Google sign-in needs attention', e(message),
+    `<div class="auth-actions"><button class="auth-primary" data-auth-action="signin">Try Google again</button><button class="auth-secondary" data-auth-action="copy-site">Copy Safari link</button></div>${safariInstructions()}<div class="auth-footnote">Your collection remains safely stored in Firebase.</div>`);
+}
+function startGoogleSignIn(button) {
+  // Open popup synchronously from the tap: iOS may block it after an awaited operation.
+  const sequence = ++signInSequence;
+  clearSignInWatchdog();
+  button.disabled = true;
+  button.textContent = 'Opening Google...';
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({prompt:'select_account'});
+  let popup;
+  try { popup = signInWithPopup(auth, provider); }
+  catch (err) {
+    signInHelp(err?.message || 'This browser could not open Google sign-in.');
+    return;
+  }
+  signInWatchdog = setTimeout(() => {
+    if (signInSequence !== sequence || currentUser) return;
+    signInHelp('Google has not returned to GameVault. The iPhone may have blocked the login window.');
+  }, 15000);
+  Promise.resolve(popup).then(() => {
+    if (signInSequence === sequence) clearSignInWatchdog();
+  }).catch(err => {
+    if (signInSequence !== sequence || currentUser) return;
+    clearSignInWatchdog();
+    const code = err?.code || '';
+    const msg = code === 'auth/popup-closed-by-user' ? 'The Google window was closed before sign-in completed.'
+      : code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment'
+        ? 'This browser did not allow the Google sign-in window.'
+        : `Sign-in failed (${code || 'browser error'}). ${err?.message || ''}`;
+    signInHelp(msg);
+  });
 }
 function notifyGames(games){window.dispatchEvent(new CustomEvent('gv:games',{detail:{games}}));}
 function fingerprint(x){const o=Object.fromEntries(Object.entries(x||{}).filter(([,v])=>v!==null&&v!==undefined));return JSON.stringify(o,Object.keys(o).sort());}
@@ -101,14 +149,18 @@ authRoot.addEventListener('click',async ev=>{
     try{await navigator.clipboard.writeText(currentUser.uid);button.textContent='Copied ✓';}
     catch{button.textContent='Select the UID above to copy';}
   }
-  if(action==='retry'&&currentUser)startListening();
-  if(action==='signout')await signOut(auth);
-  if(action==='signin'){
-    button.disabled=true;
-    button.textContent='Opening Google...';
-    try{await setPersistence(auth,browserLocalPersistence);await signInWithPopup(auth,new GoogleAuthProvider());}
-    catch(error){signedOut();const p=authRoot.querySelector('p');if(p)p.textContent=error?.code==='auth/popup-closed-by-user'?'Sign-in window closed. Try again.':`Sign-in failed: ${error?.message||'Please try again.'}`;}
+  if(action==='copy-site'){
+    try { await navigator.clipboard.writeText(SITE_URL); button.textContent='Link copied ✓'; }
+    catch { button.textContent='Copy the link shown below'; }
+    return;
   }
+  if(action==='retry'&&currentUser)startListening();
+  if(action==='signout'){
+    signInSequence++;
+    clearSignInWatchdog();
+    await signOut(auth);
+  }
+  if(action==='signin') startGoogleSignIn(button);
 });
 document.getElementById('account-button')?.addEventListener('click',()=>{
   if(!currentUser){signedOut();return;}
@@ -117,6 +169,7 @@ document.getElementById('account-button')?.addEventListener('click',()=>{
 });
 authRoot.addEventListener('click',ev=>{if(ev.target.closest('[data-auth-action="back"]'))ready();});
 onAuthStateChanged(auth,user=>{
+  if (user) { signInSequence++; clearSignInWatchdog(); }
   if(unsubscribe){unsubscribe();unsubscribe=null;}
   currentUser=user;
   authorized=false;

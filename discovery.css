@@ -28,3 +28,16 @@
 .gv-chosen-cover{width:80px;height:108px;overflow:hidden;border:1px solid #536a99;border-radius:9px;background:#1d3054}
 .gv-chosen-cover img{display:block;width:100%;height:100%;object-fit:contain}
 @media(max-width:720px){.gv-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.gv-gallery-title{font-size:15px}.gv-meta-confirm{align-items:flex-start;flex-direction:column}.gv-art-card img{max-height:195px}.gv-mini-link{min-height:30px}}
+
+/* GameVault v0.4 — bulk review + smart edition enrichment */
+.gv-meta-note{border:1px solid #344666;color:#aebcda;background:#13203a;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin:8px 0 14px}
+.gv-custom-edition{margin-top:8px}
+.gv-batch-row{grid-template-columns:minmax(165px,1.3fr) minmax(190px,1.4fr) minmax(105px,.75fr) minmax(120px,.8fr) 66px 112px;gap:9px;align-items:center}
+.gv-batch-edition-label{font-size:10px;color:#9babcb;display:flex;flex-direction:column;gap:4px}
+.gv-batch-edition{width:100%;font-size:12px}
+.gv-batch-skip{display:flex;align-items:center;gap:6px;font-size:12px;color:#b4c2dd;white-space:nowrap}
+.gv-batch-skipped{opacity:.56}
+@media(max-width:1120px){.gv-batch-row{grid-template-columns:repeat(2,minmax(0,1fr))}.gv-batch-row>div:first-child{grid-column:1/-1}}
+@media(max-width:560px){.gv-batch-row{grid-template-columns:minmax(0,1fr)}.gv-batch-row>div:first-child{grid-column:auto}}
+
+@media(max-width:560px){#bulk-results .form-actions{flex-direction:column;align-items:stretch}#bulk-results .form-actions>.btn{width:100%;min-width:0;max-width:100%;white-space:normal}.gv-batch-row .field{min-width:0;max-width:100%}}

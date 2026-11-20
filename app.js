@@ -4,7 +4,7 @@
   // Games are held only in memory and saved to Firebase. Nothing private goes into localStorage.
   const allPlatforms = CONFIG.platforms;
   const app = {view:'library',platform:'all',search:'',format:'all',sort:'title',grid:true,includeCompatible:false,
-    games:load(),modal:null,selectedCandidate:null,batch:[],addPlatform:'ps5',editSelection:null,addSelection:null,artChoices:[],searchSerial:0,coverSerial:0};
+    games:load(),modal:null,selectedCandidate:null,batch:[],importing:false,addPlatform:'ps5',addMetadataPromise:null,addSelection:null,editSelection:null,artChoices:[],searchSerial:0,coverSerial:0};
   function load(){return [];}
   async function persist(){
     if(!window.GVCloud?.save){throw new Error('Secure connection is not available yet.');}
@@ -49,7 +49,7 @@
   function empty(head,body){return `<div class="empty-state"><div class="empty-graphic">◇</div><h3>${esc(head)}</h3><p>${esc(body)}</p><button class="btn" data-nav="add">＋ Add a game</button></div>`;}
   function navOption(selected){return allPlatforms.map(p=>`<option value="${p.id}" ${selected===p.id?'selected':''}>${esc(p.label)}</option>`).join('');}
   function renderAdd(){
-    app.selectedCandidate=null;app.addSelection=null;
+    app.selectedCandidate=null;app.addSelection=null;app.addMetadataPromise=null;
     document.getElementById('main').innerHTML=`<section class="intro-panel"><div class="eyebrow">COLLECTION MANAGER / SMART ADD</div><h1>Add a game</h1><p>Pick a platform, start typing and select a match. You can always edit the title, edition and cover later.</p></section><div class="card-panel"><div class="info-bar">✦ <strong>Smart matching.</strong> Platform-filtered reference titles appear first; live Wikidata suggestions require confirmation. Rich IGDB metadata unlocks when the secure catalog service is connected.</div><div class="form-field"><label class="form-label" for="add-platform">PLATFORM</label><select id="add-platform" class="field">${navOption(app.addPlatform)}</select></div><div class="form-field"><label class="form-label" for="add-search">SEARCH GAME TITLE</label><input id="add-search" class="field" placeholder="Search games..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="add-suggestions"/><div id="add-suggestions" aria-live="polite"></div></div><div id="add-fields" class="hidden"></div></div>`;
   }
   function suggestionData(query,platform){let q=uniqueCopy(query);if(!q||q.length<2)return [];return window.GVDiscovery?.local(query,platform)||[];}
@@ -83,64 +83,138 @@
     let ed=selected?.editions?.length?selected.editions:(cat?.editions?.length?cat.editions:['Standard Edition']);
     let exists=activeGames().find(g=>g.platform===app.addPlatform&&uniqueCopy(gameTitle(g))===uniqueCopy(app.selectedCandidate.title));
     let root=document.getElementById('add-fields');root.classList.remove('hidden');
-    root.innerHTML=`<div class="section-divider"></div><div class="eyebrow">SELECTED GAME · ${esc(selected?.source||'Custom')}</div><h2 style="font-family:var(--heading);margin:8px 0">${esc(app.selectedCandidate.title)}</h2>${selected?.source==='wikidata'?'<p class="small-note">Wikidata title match. Confirm this game is available on the selected platform before saving.</p>':''}${exists?`<div class="info-bar warning">⚠ Already in your collection. Any additional format will be merged into the existing record.</div>`:''}<div class="form-field top-gap"><span class="form-label">OWNERSHIP FORMATS</span><div class="choice-row"><label class="choice-box"><input id="add-physical" type="checkbox" checked/> ▣ Physical</label><label class="choice-box"><input id="add-digital" type="checkbox"/> ⇩ Digital</label></div></div><div class="form-row"><div class="form-field"><label class="form-label" for="add-edition-p">PHYSICAL EDITION</label><select class="field" id="add-edition-p">${ed.map(e=>`<option>${esc(e)}</option>`).join('')}</select></div><div class="form-field"><label class="form-label" for="add-edition-d">DIGITAL EDITION</label><select class="field" id="add-edition-d">${ed.map(e=>`<option>${esc(e)}</option>`).join('')}</select></div></div><div class="form-actions"><button class="btn btn-dark" data-action="cancel-add">Cancel</button><button class="btn" data-action="save-add">＋ Add to Library</button></div><p class="small-note">The game record stays editable, including name, edition and artwork.</p>`;
-    if(selected?.source==='igdb'||selected?.source==='wikidata')window.GVDiscovery.details(selected).then(x=>{if(app.selectedCandidate?.title!==selected.title)return;Object.assign(app.selectedCandidate,{year:x.year||null,publisher:x.publisher||'',developer:x.developer||'',genre:x.genre||'',cover:x.cover||'',editions:x.editions||[]});}).catch(()=>{});
+    root.innerHTML=`<div class="section-divider"></div><div class="eyebrow">SELECTED GAME · ${esc(selected?.source||'Custom')}</div><h2 style="font-family:var(--heading);margin:8px 0">${esc(app.selectedCandidate.title)}</h2><div id="add-metadata-state" class="gv-meta-note">${selected?.source==='igdb'||selected?.source==='curated'?'Loading available editions and metadata…':'Manual title: details can be edited later.'}</div>${selected?.source==='wikidata'?'<p class="small-note">Wikidata title match. Confirm this game is available on the selected platform before saving.</p>':''}${exists?`<div class="info-bar warning">⚠ Already in your collection. Any additional format will be merged into the existing record.</div>`:''}<div class="form-field top-gap"><span class="form-label">OWNERSHIP FORMATS</span><div class="choice-row"><label class="choice-box"><input id="add-physical" type="checkbox" checked/> ▣ Physical</label><label class="choice-box"><input id="add-digital" type="checkbox"/> ⇩ Digital</label></div></div><div class="form-row"><div class="form-field"><label class="form-label" for="add-edition-p">PHYSICAL EDITION</label><select class="field" id="add-edition-p">${edOptions(ed,ed[0])}</select><input class="field gv-custom-edition" id="add-custom-p" placeholder="Other physical edition (optional)" maxlength="90" /></div><div class="form-field"><label class="form-label" for="add-edition-d">DIGITAL EDITION</label><select class="field" id="add-edition-d">${edOptions(ed,ed[0])}</select><input class="field gv-custom-edition" id="add-custom-d" placeholder="Other digital edition (optional)" maxlength="90" /></div></div><div class="form-actions"><button class="btn btn-dark" data-action="cancel-add">Cancel</button><button class="btn" data-action="save-add">＋ Add to Library</button></div><p class="small-note">The game record stays editable, including name, edition and artwork.</p>`;
+    const current=app.selectedCandidate;
+    if(selected?.source==='igdb'||selected?.source==='wikidata'||selected?.source==='curated'){
+      app.addMetadataPromise=window.GVDiscovery.details(selected,{platform:app.addPlatform}).then(x=>{
+        if(app.selectedCandidate!==current)return;
+        Object.assign(current,{year:x.year||null,publisher:x.publisher||'',developer:x.developer||'',genre:x.genre||'',cover:x.cover||'',editions:x.editions||[],source:x.source||current.source,metadataId:x.metadataId||x.id||current.metadataId});
+        for(const id of ['add-edition-p','add-edition-d']){
+          const el=document.getElementById(id);if(!el)continue;
+          const chosen=el.value;
+          el.innerHTML=edOptions([...new Set([...(current.editions||[]),chosen])],chosen);
+        }
+        const status=document.getElementById('add-metadata-state');
+        if(status)status.textContent=[x.source==='igdb'?'IGDB':'Reference',x.year,x.publisher,(x.editions||[]).length+' edition choices'].filter(Boolean).join(' · ')+'. Review the edition before saving.';
+      }).catch(()=>{
+        const status=document.getElementById('add-metadata-state');
+        if(app.selectedCandidate===current && status)status.textContent='Live details unavailable. You can still select or enter an edition.';
+      });
+    }
   }
   function newId(){if(window.crypto?.randomUUID)return 'g-'+crypto.randomUUID();return 'g-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);}
-  async function addCandidate(){let c=app.selectedCandidate;if(!c)return;let physical=document.getElementById('add-physical').checked,digital=document.getElementById('add-digital').checked;if(!physical&&!digital){toast('Select at least one format.','error');return;}let edP=document.getElementById('add-edition-p').value,edD=document.getElementById('add-edition-d').value;let existing=activeGames().find(g=>g.platform===app.addPlatform&&uniqueCopy(gameTitle(g))===uniqueCopy(c.title));if(existing){if(physical){existing.physical=true;existing.physicalEdition=edP;}if(digital){existing.digital=true;existing.digitalEdition=edD;}existing.review=existing.review||(!c.catalogKey&&!c.metadataId);}else{app.games.unshift({id:newId(),catalogKey:c.catalogKey,title:c.catalogKey?undefined:c.title,platform:app.addPlatform,physical,digital,physicalEdition:physical?edP:'',digitalEdition:digital?edD:'',createdAt:new Date().toISOString(),deletedAt:null,coverVerified:false,review:!c.catalogKey&&!c.metadataId,ps5Compatible:false,notes:'',year:c.year,publisher:c.publisher,developer:c.developer,genre:c.genre,metadataSource:c.source,metadataId:c.metadataId,metadataVerified:false,coverUrl:''});}try{await persist();toast(existing?'Existing game updated — no duplicate created.':'Game added to your library.');app.platform='all';app.search='';app.format='all';setNav('library');}catch{}}
+  async function addCandidate(){
+    const current=app.selectedCandidate;
+    if(!current)return;
+    const saveButton=document.querySelector('[data-action="save-add"]');
+    if(saveButton){saveButton.disabled=true;saveButton.textContent='Checking metadata…';}
+    // Wait for the selected game details to arrive, while keeping the user's
+    // format and edition choices intact. A stale result must never change another title.
+    try{if(app.addMetadataPromise)await app.addMetadataPromise;}catch{}
+    if(app.selectedCandidate!==current)return;
+    const physical=document.getElementById('add-physical')?.checked,digital=document.getElementById('add-digital')?.checked;
+    if(!physical&&!digital){toast('Select at least one format.','error');if(saveButton){saveButton.disabled=false;saveButton.textContent='＋ Add to Library';}return;}
+    const edP=(document.getElementById('add-custom-p')?.value.trim()||document.getElementById('add-edition-p').value).slice(0,90);
+    const edD=(document.getElementById('add-custom-d')?.value.trim()||document.getElementById('add-edition-d').value).slice(0,90);
+    const existing=activeGames().find(g=>g.platform===app.addPlatform&&uniqueCopy(gameTitle(g))===uniqueCopy(current.title));
+    let newFormat=false;
+    if(existing){
+      // Adding a game already owned may add a missing format, but never silently
+      // replaces the existing edition of a physical or digital copy.
+      if(physical&&!existing.physical){existing.physical=true;existing.physicalEdition=edP;newFormat=true;}
+      if(digital&&!existing.digital){existing.digital=true;existing.digitalEdition=edD;newFormat=true;}
+      if(!newFormat){toast('Already owned in the selected format. No changes made.');if(saveButton){saveButton.disabled=false;saveButton.textContent='＋ Add to Library';}return;}
+    }else{
+      app.games.unshift({id:newId(),catalogKey:current.catalogKey,title:current.title,platform:app.addPlatform,physical,digital,physicalEdition:physical?edP:'',digitalEdition:digital?edD:'',createdAt:new Date().toISOString(),deletedAt:null,coverVerified:false,review:current.source!=='igdb'&&!current.catalogKey,ps5Compatible:false,notes:'',year:current.year||null,publisher:current.publisher||'',developer:current.developer||'',genre:current.genre||'',metadataSource:current.source||'manual',metadataId:current.metadataId||'',metadataVerified:false,coverUrl:current.source==='igdb'?safeUrl(current.cover||''):'',coverSource:current.source==='igdb'?'igdb':'reference'});
+    }
+    try{await persist();toast(existing?'Added the missing ownership format.':'Game added to your library.');app.platform='all';app.search='';app.format='all';setNav('library');}
+    catch{if(saveButton){saveButton.disabled=false;saveButton.textContent='＋ Add to Library';}}
+  }
   function renderBulk(){
     app.batch=[];
-    document.getElementById('main').innerHTML=`<section class="intro-panel"><div class="eyebrow">COLLECTION MANAGER / SMART BATCH</div><h1>Bulk Import</h1><p>Paste a list, get suggested title matches, and review ownership before adding anything to your private library.</p></section><div class="card-panel wide"><div class="info-bar">✦ <strong>Intelligent batch matching.</strong> Reference matches are platform-filtered. Other live results need your review. Nothing is saved automatically.</div><div class="form-field"><label class="form-label" for="bulk-platform">PLATFORM</label><select class="field" id="bulk-platform">${navOption('ps5')}</select></div><div class="form-field"><label class="form-label" for="bulk-text">GAME TITLES — ONE PER LINE</label><textarea class="field" id="bulk-text" rows="8" placeholder="Minecraft\nResident Evil Requiem\nASTRO BOT"></textarea><div class="field-hint">Up to 50 games per batch. We check title matches and avoid duplicates.</div></div><button class="btn" data-action="bulk-match">✦ Match &amp; Review</button><div id="bulk-results"></div></div>`;
+    document.getElementById('main').innerHTML=`<section class="intro-panel"><div class="eyebrow">COLLECTION MANAGER / SMART BATCH</div><h1>Bulk Import</h1><p>Paste a list, get suggested title matches, and review ownership before adding anything to your private library.</p></section><div class="card-panel wide"><div class="info-bar">✦ <strong>Intelligent batch matching.</strong> Reference matches are platform-filtered. Other live results need your review. Nothing is saved automatically.</div><div class="form-field"><label class="form-label" for="bulk-platform">PLATFORM</label><select class="field" id="bulk-platform">${navOption('ps5')}</select></div><div class="form-field"><label class="form-label" for="bulk-text">GAME TITLES — ONE PER LINE</label><textarea class="field" id="bulk-text" rows="8" placeholder="Minecraft\nResident Evil Requiem\nASTRO BOT"></textarea><div class="field-hint">Up to 50 games per batch. Preview every match, edit the edition, or skip a row. Existing formats are never overwritten.</div></div><button class="btn" data-action="bulk-match">✦ Match &amp; Review</button><div id="bulk-results"></div></div>`;
   }
   async function batchMatch(){
     const raw=document.getElementById('bulk-text')?.value.trim()||'',platform=document.getElementById('bulk-platform')?.value;
     if(!raw){toast('Paste at least one game title.','error');return;}
-    const lines=[...new Set(raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))].slice(0,50);
-    app.batch=lines.map(title=>({title,platform,format:'physical',candidates:[],selected:-1,status:'searching'}));
+    const lines=[];const seen=new Set();
+    for(const title of raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)){
+      const key=uniqueCopy(title);if(!key||seen.has(key))continue;
+      seen.add(key);lines.push(title);
+    }
+    if(lines.length>50){toast('Please import up to 50 unique games at a time. Nothing was changed.','error');return;}
+    app.batch=lines.map(title=>({title,platform,format:'physical',edition:'Standard Edition',skip:false,candidates:[],selected:-1,status:'searching'}));
     renderBatchResults();
-    const btn=document.querySelector('[data-action="bulk-match"]');if(btn)btn.disabled=true;
     const batch=app.batch;
-    for(let start=0;start<batch.length;start+=3){
-      await Promise.all(batch.slice(start,start+3).map(async b=>{
+    for(let start=0;start<batch.length;start+=2){
+      await Promise.all(batch.slice(start,start+2).map(async b=>{
         try{
           const r=await window.GVDiscovery.search(b.title,platform);
           if(app.batch!==batch)return;
-          b.candidates=r.results.slice(0,7);
-          const exact=b.candidates.findIndex(x=>uniqueCopy(x.title)===uniqueCopy(b.title));
+          b.candidates=r.results.slice(0,10);
+          const exact=b.candidates.findIndex(x=>uniqueCopy(x.title)===uniqueCopy(b.title)&&window.GVDiscovery.platformConfirmed(x,platform));
           b.selected=exact>=0?exact:-1;
-          b.status=exact>=0?(b.candidates[exact].platforms?.includes(platform)?'matched':'review'):'review';
+          b.status=exact>=0?'matched':'review';
+          if(exact>=0&&b.candidates[exact].editions?.length===1)b.edition=b.candidates[exact].editions[0];
         }catch{b.candidates=suggestionData(b.title,platform);b.status='review';}
       }));
       if(app.batch!==batch)break;
       renderBatchResults();
     }
-    if(btn)btn.disabled=false;
+  }
+  function batchOwned(b){
+    const selected=b.candidates?.[b.selected]||null;
+    return activeGames().find(g=>g.platform===b.platform&&uniqueCopy(gameTitle(g))===uniqueCopy(selected?.title||b.title));
   }
   function renderBatchResults(){
     const target=document.getElementById('bulk-results');if(!target)return;
     const waiting=app.batch.filter(x=>x.status==='searching').length;
-    target.innerHTML=`<div class="section-divider"></div><div class="section-head"><div><h2>Review ${app.batch.length} titles</h2><p>${waiting?`Matching ${waiting} titles…`:'Check ambiguous titles, then import.'}</p></div></div><div class="batch-review">${app.batch.map((b,i)=>{
-      let selected=b.candidates?.[b.selected]||null;
-      const title=selected?.title||b.title;
-      const owned=activeGames().some(x=>x.platform===b.platform&&uniqueCopy(gameTitle(x))===uniqueCopy(title));
-      return `<div class="batch-row"><div><strong>${esc(b.title)}</strong><small>${selected?'Suggested: '+esc(selected.title):'Keep original title for review'}${owned?' · Already owned — merge format':''}</small></div><select class="field" data-batch-select="${i}" aria-label="Match for ${esc(b.title)}"><option value="-1" ${b.selected===-1?'selected':''}>Manual: ${esc(b.title)}</option>${(b.candidates||[]).map((x,n)=>`<option value="${n}" ${b.selected===n?'selected':''}>${esc(x.title)} · ${esc(x.source)}</option>`).join('')}</select><select class="field" data-batch-format="${i}" aria-label="Ownership for ${esc(b.title)}"><option value="physical" ${b.format==='physical'?'selected':''}>Physical</option><option value="digital" ${b.format==='digital'?'selected':''}>Digital</option><option value="both" ${b.format==='both'?'selected':''}>Both</option></select><span class="mini-pill ${b.status==='matched'?'digital':'review'}">${b.status==='searching'?'SEARCHING':b.status==='matched'?'MATCHED':'REVIEW'}</span></div>`;
-    }).join('')}</div><div class="form-actions"><button class="btn btn-dark" data-action="bulk-cancel">Discard review</button><button class="btn" data-action="bulk-save" ${waiting?'disabled':''}>✓ Import reviewed games</button></div>`;
+    const pending=app.batch.filter(x=>!x.skip&&x.status==='review').length;
+    const skipped=app.batch.filter(x=>x.skip).length;
+    target.innerHTML=`<div class="section-divider"></div><div class="section-head"><div><h2>Review ${app.batch.length} titles</h2><p>${app.importing?'Enriching catalog metadata and preparing a safe import…':waiting?`Matching ${waiting} titles…`:`${pending} need review · ${skipped} skipped · No changes until you confirm`}</p></div></div><div class="batch-review">${app.batch.map((b,i)=>{
+      const selected=b.candidates?.[b.selected]||null, owned=batchOwned(b);
+      const status=b.skip?'SKIP':b.status==='searching'?'SEARCHING':owned?'ALREADY OWNED':b.status==='matched'?'MATCHED':'REVIEW';
+      return `<div class="batch-row gv-batch-row ${b.skip?'gv-batch-skipped':''}"><div><strong>${esc(b.title)}</strong><small>${selected?'Suggested: '+esc(selected.title):'Manual title — review before importing'}${owned?' · Existing record will only receive missing formats':''}</small></div><select class="field" data-batch-select="${i}" aria-label="Match for ${esc(b.title)}" ${app.importing?'disabled':''}><option value="-1" ${b.selected===-1?'selected':''}>Manual: ${esc(b.title)}</option>${(b.candidates||[]).map((x,n)=>`<option value="${n}" ${b.selected===n?'selected':''}>${esc(x.title)} · ${esc(x.source)}</option>`).join('')}</select><select class="field" data-batch-format="${i}" aria-label="Ownership for ${esc(b.title)}" ${app.importing?'disabled':''}><option value="physical" ${b.format==='physical'?'selected':''}>Physical</option><option value="digital" ${b.format==='digital'?'selected':''}>Digital</option><option value="both" ${b.format==='both'?'selected':''}>Both</option></select><label class="gv-batch-edition-label">Edition <input class="field gv-batch-edition" maxlength="90" data-batch-edition="${i}" value="${esc(b.edition)}" placeholder="Edition" ${app.importing?'disabled':''}></label><label class="gv-batch-skip"><input type="checkbox" data-batch-skip="${i}" ${b.skip?'checked':''} ${app.importing?'disabled':''}/> Skip</label><span class="mini-pill ${status==='MATCHED'?'digital':'review'}">${status}</span></div>`;
+    }).join('')}</div><div class="form-actions"><button class="btn btn-dark" data-action="bulk-cancel" ${app.importing?'disabled':''}>Discard review</button><button class="btn" data-action="bulk-save" ${waiting||app.importing?'disabled':''}>${app.importing?'Checking catalog…':'✓ Import reviewed games'}</button></div>`;
   }
   async function saveBatch(){
-    if(!app.batch.length||app.batch.some(x=>x.status==='searching'))return;
-    const staged=app.games.map(x=>({...x}));let added=0,updated=0;
-    for(const b of app.batch){
-      const c=b.candidates?.[b.selected]||null,title=c?.title||b.title;
-      const existing=staged.find(x=>!x.deletedAt&&x.platform===b.platform&&uniqueCopy(gameTitle(x))===uniqueCopy(title));
-      const ph=b.format==='physical'||b.format==='both',di=b.format==='digital'||b.format==='both';
-      if(existing){if(ph){existing.physical=true;existing.physicalEdition||='Standard Edition';}if(di){existing.digital=true;existing.digitalEdition||='Standard Edition';}updated++;}
-      else{staged.push({id:newId(),catalogKey:c?.key||'',title,platform:b.platform,physical:ph,digital:di,physicalEdition:ph?'Standard Edition':'',digitalEdition:di?'Standard Edition':'',year:c?.year||null,publisher:c?.publisher||'',developer:c?.developer||'',genre:c?.genre||'',createdAt:new Date().toISOString(),deletedAt:null,coverVerified:false,review:!c||c.source==='wikidata',metadataSource:c?.source||'manual',metadataId:c?.id||'',ps5Compatible:false,notes:''});added++;}
-    }
-    if(!window.confirm(`Add ${added} titles and update ${updated} existing ones in your private library?`))return;
-    app.games=staged;
-    try{await persist();toast(`${added} games added, ${updated} existing games updated.`);app.platform='all';app.search='';app.format='all';setNav('library');}
-    catch{}
+    if(!app.batch.length||app.batch.some(x=>x.status==='searching')||app.importing)return;
+    const rows=app.batch.filter(x=>!x.skip);
+    if(!rows.length){toast('Select at least one row to import.');return;}
+    const originalGames=app.games;
+    const draft=app.games.map(x=>({...x}));
+    let added=0,updated=0,already=0,manual=0;
+    // Explicit confirmation BEFORE any network enrichment or Firestore writes.
+    if(!window.confirm(`Review complete: process ${rows.length} games, skip ${app.batch.length-rows.length}. Existing editions will not be replaced. Continue?`))return;
+    app.importing=true;renderBatchResults();
+    try{
+      for(const b of rows){
+        const chosen=b.candidates?.[b.selected]||null;
+        let detail=chosen;
+        if(chosen){try{detail=await window.GVDiscovery.details(chosen,{platform:b.platform})||chosen;}catch{detail=chosen;}}
+        const title=String(detail?.title||chosen?.title||b.title).trim();
+        const existing=draft.find(x=>!x.deletedAt&&x.platform===b.platform&&uniqueCopy(gameTitle(x))===uniqueCopy(title));
+        const ph=b.format==='physical'||b.format==='both',di=b.format==='digital'||b.format==='both';
+        const edition=b.edition.trim().slice(0,90)||'Standard Edition';
+        if(existing){
+          let changed=false;
+          if(ph&&!existing.physical){existing.physical=true;existing.physicalEdition=edition;changed=true;}
+          if(di&&!existing.digital){existing.digital=true;existing.digitalEdition=edition;changed=true;}
+          if(changed)updated++;else already++;
+        }else{
+          draft.push({id:newId(),catalogKey:chosen?.key||'',title,platform:b.platform,physical:ph,digital:di,physicalEdition:ph?edition:'',digitalEdition:di?edition:'',year:detail?.year||null,publisher:detail?.publisher||'',developer:detail?.developer||'',genre:detail?.genre||'',createdAt:new Date().toISOString(),deletedAt:null,coverVerified:false,review:!chosen||chosen.source==='wikidata'||(chosen.source==='curated'&&!detail?.metadataId),metadataSource:detail?.source||chosen?.source||'manual',metadataId:detail?.metadataId||detail?.id||chosen?.id||'',ps5Compatible:false,notes:'',coverUrl:detail?.source==='igdb'?safeUrl(detail.cover||''):'',coverSource:detail?.source==='igdb'?'igdb':'manual'});
+          added++;if(!chosen)manual++;
+        }
+      }
+      if(!added&&!updated){toast(`${already} already owned — no changes needed.`);return;}
+      app.games=draft;
+      await persist();
+      toast(`${added} games added, ${updated} formats added${manual?`, ${manual} manual titles to review`:''}.`);
+      app.platform='all';app.search='';app.format='all';setNav('library');
+    }catch(error){app.games=originalGames;toast('Bulk import was not completed. Please check the connection.','error');}
+    finally{app.importing=false;if(app.view==='bulk')renderBatchResults();}
   }
+
   function renderTrash(){let list=app.games.filter(x=>x.deletedAt);document.getElementById('main').innerHTML=`<section class="intro-panel"><div class="eyebrow">COLLECTION MANAGER / SAFETY</div><h1>Recently Deleted</h1><p>Deleting a game moves it here instead of erasing it forever. Restore it whenever you need to.</p></section><div class="card-panel wide"><div class="section-head"><div><h2>${list.length} deleted ${list.length===1?'game':'games'}</h2><p>No extra password needed for a recoverable deletion.</p></div></div>${list.length?list.map(g=>`<div class="trash-row"><div><strong>${esc(gameTitle(g))}</strong><small>${esc(getPlatform(g.platform).label)} · Deleted ${new Date(g.deletedAt).toLocaleDateString('en-US')}</small></div><button class="btn btn-sm" data-restore="${esc(g.id)}">↶ Restore</button></div>`).join(''):empty('Your trash is empty','Deleted games will appear here, where you can restore them.')}</div>`;}
   function modal(html){app.modal=true;document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" role="presentation"><section class="modal" role="dialog" aria-modal="true" aria-label="Game details">${html}</section></div>`;document.body.style.overflow='hidden';}
   function closeModal(){app.modal=false;document.getElementById('modal-root').innerHTML='';document.body.style.overflow='';}
@@ -251,8 +325,8 @@
   document.addEventListener('click',async e=>{let t=e.target.closest('button,[data-detail],.game-card');if(!t)return;if(t.dataset.nav){e.preventDefault();setNav(t.dataset.nav);return;}if(t.dataset.platformNav){app.platform=t.dataset.platformNav;app.view='library';app.search='';setNav('library');return;}if(t.dataset.platform){app.platform=t.dataset.platform;app.view='library';app.search='';render();document.querySelector('.results-meta')?.scrollIntoView({behavior:'smooth',block:'center'});return;}if(t.dataset.detail){detail(t.dataset.detail);return;}if(t.dataset.edit){edit(t.dataset.edit);return;}if(t.dataset.delete){deleteGame(t.dataset.delete);return;}if(t.dataset.confirmDelete){let g=app.games.find(x=>x.id===t.dataset.confirmDelete);if(g){g.deletedAt=new Date().toISOString();try{await persist();closeModal();render();toast('Moved to Recently Deleted.');}catch{}}return;}if(t.dataset.restore){let g=app.games.find(x=>x.id===t.dataset.restore);if(g){g.deletedAt=null;try{await persist();render();toast('Game restored to your library.');}catch{}}return;}if(t.dataset.smartPick){let [kind,i]=t.dataset.smartPick.split(':');let c=app[kind==='add'?'addResults':'editResults']?.[Number(i)];if(kind==='add'&&c)chooseCandidate(c.key||'', '',c);if(kind==='edit'&&c)editSelect(c);return;}if(t.dataset.artPick!==undefined){chooseCover(Number(t.dataset.artPick));return;}if(t.dataset.selectCat){chooseCandidate(t.dataset.selectCat);return;}if(t.dataset.selectCustom){let v=document.getElementById('add-search')?.value?.trim();if(v)chooseCandidate('',v);return;}
     switch(t.dataset.action){case'browse-covers':browseCovers();break;case'find-official':editFind();break;case'restore-metadata':restoreMetadata();break;case'grid':app.grid=true;renderLibrary();break;case'list':app.grid=false;renderLibrary();break;case'close-modal':closeModal();break;case'cancel-add':renderAdd();break;case'save-add':addCandidate();break;case'bulk-match':batchMatch();break;case'bulk-save':saveBatch();break;case'bulk-cancel':app.batch=[];renderBatchResults();break;case'export-csv':exportCsv();break;case'import-json':document.getElementById('private-import-file').click();break;}
   });
-  document.addEventListener('input',e=>{if(e.target.id==='library-search'){let start=e.target.selectionStart;app.search=e.target.value;let results=activeGames().filter(matches);results.sort((a,b)=>app.sort==='year'?((fld(b,'year')||0)-(fld(a,'year')||0)):app.sort==='recent'?((b.createdAt||'').localeCompare(a.createdAt||'')):gameTitle(a).localeCompare(gameTitle(b)));document.getElementById('library-results').innerHTML=results.length?`<div class="${app.grid?'game-grid':'game-list'}">${results.map(card).join('')}</div>`:empty('No matching games','Try another search or filter.');document.querySelector('.results-meta')?.firstElementChild&&(document.querySelector('.results-meta').firstElementChild.textContent=results.length);return;}if(e.target.id==='add-search'){app.selectedCandidate=null;document.getElementById('add-fields')?.classList.add('hidden');renderSuggestions();}if(e.target.id==='edit-title'){app.editSelection=null;const p=document.getElementById('metadata-preview');if(p)p.classList.add('hidden');editFind();}});
-  document.addEventListener('change',e=>{let t=e.target;if(t.id==='library-format'){app.format=t.value;renderLibrary();}if(t.id==='library-sort'){app.sort=t.value;renderLibrary();}if(t.id==='compat-toggle'){app.includeCompatible=t.checked;renderLibrary();}if(t.id==='add-platform'){app.addPlatform=t.value;app.selectedCandidate=null;document.getElementById('add-fields')?.classList.add('hidden');renderSuggestions();}if(t.id==='edit-platform'){app.editSelection=null;document.getElementById('metadata-preview')?.classList.add('hidden');editFind();}if(t.dataset.batchFormat!==undefined){app.batch[Number(t.dataset.batchFormat)].format=t.value;}if(t.dataset.batchSelect!==undefined){let b=app.batch[Number(t.dataset.batchSelect)];b.selected=Number(t.value);b.status=b.selected>=0&&b.candidates?.[b.selected]?.platforms?.includes(b.platform)?'matched':'review';renderBatchResults();}});
+  document.addEventListener('input',e=>{if(e.target.id==='library-search'){let start=e.target.selectionStart;app.search=e.target.value;let results=activeGames().filter(matches);results.sort((a,b)=>app.sort==='year'?((fld(b,'year')||0)-(fld(a,'year')||0)):app.sort==='recent'?((b.createdAt||'').localeCompare(a.createdAt||'')):gameTitle(a).localeCompare(gameTitle(b)));document.getElementById('library-results').innerHTML=results.length?`<div class="${app.grid?'game-grid':'game-list'}">${results.map(card).join('')}</div>`:empty('No matching games','Try another search or filter.');document.querySelector('.results-meta')?.firstElementChild&&(document.querySelector('.results-meta').firstElementChild.textContent=results.length);return;}if(e.target.id==='add-search'){app.selectedCandidate=null;document.getElementById('add-fields')?.classList.add('hidden');renderSuggestions();}if(e.target.dataset.batchEdition!==undefined){app.batch[Number(e.target.dataset.batchEdition)].edition=e.target.value;return;}if(e.target.id==='edit-title'){app.editSelection=null;const p=document.getElementById('metadata-preview');if(p)p.classList.add('hidden');editFind();}});
+  document.addEventListener('change',e=>{let t=e.target;if(t.id==='library-format'){app.format=t.value;renderLibrary();}if(t.id==='library-sort'){app.sort=t.value;renderLibrary();}if(t.id==='compat-toggle'){app.includeCompatible=t.checked;renderLibrary();}if(t.id==='add-platform'){app.addPlatform=t.value;app.selectedCandidate=null;document.getElementById('add-fields')?.classList.add('hidden');renderSuggestions();}if(t.id==='edit-platform'){app.editSelection=null;document.getElementById('metadata-preview')?.classList.add('hidden');editFind();}if(t.dataset.batchFormat!==undefined){app.batch[Number(t.dataset.batchFormat)].format=t.value;}if(t.dataset.batchSkip!==undefined){app.batch[Number(t.dataset.batchSkip)].skip=t.checked;renderBatchResults();}if(t.dataset.batchSelect!==undefined){let b=app.batch[Number(t.dataset.batchSelect)];b.selected=Number(t.value);b.status=b.selected>=0&&window.GVDiscovery.platformConfirmed(b.candidates?.[b.selected],b.platform)?'matched':'review';renderBatchResults();}});
   document.addEventListener('submit',e=>{if(e.target.id==='edit-form'){e.preventDefault();saveEdit(e.target);}});
   document.getElementById('export-json').addEventListener('click',exportJson);
   document.getElementById('modal-root').addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeModal();});

@@ -1,59 +1,24 @@
-# GameVault v0.3 — Smart Library
+# GameVault v0.4 — Smart Catalog Workflow
 
-Personal, private, mobile-first video game inventory. Hosted at `https://camushellraiser.github.io/gamevault/` using GitHub Pages + Firebase Authentication + Firestore. **No NAS, fixed IP, home server or paid hosting is required.**
+Built on top of the existing private Firebase/Firestore library. No migration or new services needed. The Plex-style cover art gallery is deliberately unchanged.
 
-## What changed in v0.3
+## Changes
 
-- **Smart Add:** live title suggestions from Wikidata, platform-filtered curated matches, and optionally IGDB. Explicitly warns when a source does not validate the selected platform.
-- **Smart Edit:** choosing a suggested game title corrects its name and recovers available metadata in the edit form while **preserving the existing Firestore record ID, physical/digital ownership and editions**.
-- **Restore Metadata:** optional re-fetch of verified source fields (year, publisher, developer, genre). Missing fields are never fabricated.
-- **Browse Covers:** Plex-style candidate gallery. Select an image visually, preview it, then save it; the gallery does **not** silently mark artwork as an authentic US platform-specific cover.
-- **Smart Bulk Import:** paste up to 50 titles per batch, match through the same discovery layer, review format and matches before applying.
-- **Cloud compatibility:** newly introduced `metadataSource`, `metadataId`, `metadataVerified`, and `coverSource` are persisted in Firestore. Old documents remain compatible. No automatic migration or destructive update is needed.
-- An **optional** Cloudflare Worker implementation (`worker/`) supports IGDB live search, multiple cover variants, and edition data, with secrets stored server-side and Firebase owner authentication on every request.
+- **Add Game:** selected IGDB/reference game details now hydrate the edit form before saving, updating year, publisher and available editions. A manual edition can always be entered when the API has no reliable edition. No cover is approved as US automatically.
+- **Edit Game:** original record IDs and ownership are preserved; the existing edit form and cover gallery remain available.
+- **Bulk Import:** up to 50 unique titles per batch (case-insensitive duplicate checks), exact IGDB/platform matches, review screen with format, edition and Skip controls, safe merging into already-owned games, IGDB metadata enrichment before writing to Firestore, and an explicit confirmation.
+- **Safety:** an existing format's edition is never silently overwritten. A missing physical/digital format can be added to an existing record. No new game is saved until confirmation. The client's bulk import rolls back its in-memory draft if Firebase reports a failure.
+- **Mobile:** batch review rows and action buttons fit a narrow screen.
 
-## Current catalog data availability
+## Known limitations
 
-| Capability | Works immediately after website update | With IGDB Worker deployed |
-|---|---|---|
-| Reference suggestions for known games | Yes | Yes |
-| Live public title search via Wikidata | Yes, when Wikidata API is reachable | Yes, fallback |
-| Platform filtering | Reference titles only | IGDB platform IDs |
-| Automatic publisher/year | For reference titles and some Wikidata years | Richer IGDB fields |
-| Cover gallery | Existing artwork and compatible reference candidates | IGDB game and localized covers added |
-| Editions | Known manually curated editions, editable at any time | IGDB game-version suggestions if recorded |
-| Verified US PS5 / Switch box art | No — requires review | Not guaranteed: verify art before approval |
+- IGDB does not always enumerate special editions. The selector offers returned/curated edition names, but manual entry remains available. The UI does not claim that an edition not returned by IGDB does not exist.
+- The date from IGDB can be the game's first release, not necessarily its release on the selected platform.
+- IGDB covers may have unknown region; GameVault does not mark them as verified US artwork without your review.
+- Live testing here used a simulated IGDB endpoint and simulated Firebase storage; production IGDB/Twitch credentials and Firebase were not accessed from tests.
 
-**Important:** For live IGDB cover suggestions, the Worker MUST be configured. The GitHub Pages frontend cannot directly call IGDB with a private Twitch secret. Avoid putting Twitch Client Secret in this repository, client JS, Firebase config or screenshots. Sources may lack region/platform coverage; the app never claims to verify artwork automatically.
+## Deployment
 
-## No need to recreate GitHub / Firebase
+Update these five files on the existing `camushellraiser/gamevault` main branch: `app.js`, `discovery.js`, `discovery.css`, `index.html`, `README.md`. The existing Firebase rules, Cloudflare Worker, `cloud.js`, `data.js`, and your private inventory do not need changing.
 
-1. Your repo `camushellraiser/gamevault`, Google Authentication, Firestore and Pages are **already created**.
-2. Deploy updated frontend files to the same repository / branch (e.g. merge the `gamevault-v0.3-smart-library` PR). This updates the UI automatically.
-3. Reload the published site. Your Firestore inventory remains **unchanged**. You should still see the same seven initial games.
-4. Open the Spider-Man entry → **Edit Game** → search `Spider-Man 2` → select the result → inspect metadata → **Save Changes**. The record ID and ownership do not change.
-5. Open Resident Evil Requiem → **Edit Game** → **Browse Covers**. Until the Worker is deployed, the gallery displays current/reference candidates, not the full IGDB feed.
-
-## Enable richer IGDB results when ready (one-time optional setup)
-
-See [worker/README.md](worker/README.md). Requirements: a free Twitch developer application (IGDB API) and a Cloudflare account to deploy the Worker; Cloudflare free usage thresholds apply. You must configure the Worker before gallery suggestions can include all available IGDB cover variants. A user login session does **not** authorize others: the Worker verifies Firebase-signed JWT tokens, project ID and exact owner UID.
-
-## Safety and scope
-
-- The **private inventory is in Firestore**, never in the GitHub repository.
-- Ownership records are never replaced by a catalog lookup; the change is saved only after explicit user action.
-- The catalog API Worker is optional and secrets are excluded from version control.
-- The public website includes Firebase web app config, which is not a service-account key.
-- `firestore.rules` in the repository is a **template**, not deployed by GitHub Pages; don't replace existing Firebase rules without validating them first.
-- No official platform/edition cover is considered US-verified unless you explicitly approve it.
-- Metadata from Wikidata may be incomplete; suggestions aren't proof that a game exists for the selected console.
-- Third-party images may cease to be accessible later. A chosen URL is stored in Firestore; no image file is currently copied to Firebase Storage.
-
-## Files
-
-- `index.html`, `styles.css`, `cloud.css` — app shell and premium UI
-- `app.js` — inventory, smart Add / Edit / Bulk, search, trash, export
-- `discovery.js`, `discovery-config.js`, `discovery.css` — title suggestions, metadata retrieval, gallery
-- `cloud.js` — Google login + Firestore with owner-only access
-- `data.js` — public reference catalog entries only, **not** your owned games
-- `worker/` — optional secure IGDB proxy, separate deployment
+Current app: https://camushellraiser.github.io/gamevault/

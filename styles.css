@@ -7,85 +7,65 @@
 .cover-frame img{position:absolute;inset:0;z-index:1;opacity:0;transition:opacity .24s ease}.cover-flag,.cover-warning{z-index:2}.selected-catalog{border-color:#91a4ff!important;background:#263559!important}.small-note{font-size:11px;line-height:1.65;color:#8b9ab7}.inline-error{color:#ffafc0;font-size:12px;margin:9px 0}.quick-suggestion-area{max-height:290px;overflow:auto}.top-gap{margin-top:16px}.header-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.card-panel.wide{max-width:100%}
 #toast-root{pointer-events:none}
 
-
-/* GameVault · signed by Aldo Lizares */
-.app-footer.gv-author-footer{
-  position:relative;isolation:isolate;overflow:hidden;
-  min-height:106px;display:flex;align-items:center;justify-content:space-between;gap:24px;
-  padding:17px clamp(24px,4vw,62px) 20px;
-  border-top:1px solid rgba(155,171,231,.17);
-  background:radial-gradient(ellipse at 22% 110%,rgba(112,92,206,.16),transparent 58%),
-             linear-gradient(135deg,#0c1321 0%,#101827 56%,#0b1220 100%);
+/* GameVault · understated developer signature.
+   Uses the existing color and typography tokens, no extra font or scripts. */
+.app-footer.gv-author-footer {
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  min-height:62px;
+  padding:12px clamp(24px,4vw,62px);
+  border-top:1px solid var(--stroke);
+  background:transparent;
 }
-.app-footer.gv-author-footer::before{
-  content:"";position:absolute;left:0;top:0;height:1px;width:61%;
-  background:linear-gradient(90deg,rgba(150,156,255,.73),rgba(202,178,248,.28),transparent);
-  pointer-events:none;
+.gv-author-credit {
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  max-width:100%;
+  color:var(--sub);
 }
-.gv-author-brand{display:flex;align-items:center;gap:17px;min-width:0}
-.gv-author-seal{
-  position:relative;display:grid;place-items:center;flex-shrink:0;
-  width:51px;height:51px;border-radius:16px;
-  color:#dee4ff;font:600 18px/1 var(--heading);
-  letter-spacing:-.09em;text-indent:-.09em;
-  background:linear-gradient(145deg,rgba(153,162,255,.22),rgba(193,141,245,.08));
-  border:1px solid rgba(184,169,252,.43);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 9px 27px rgba(6,6,22,.38);
-  transform:rotate(-8deg);
+.gv-author-mark {
+  display:grid;
+  place-items:center;
+  flex:0 0 30px;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  border:1px solid color-mix(in srgb,var(--blue) 40%,var(--stroke));
+  background:linear-gradient(155deg,var(--panel2),var(--sidebar));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055);
 }
-.gv-author-seal span{transform:rotate(8deg)}
-.gv-author-seal::after{
-  content:"";position:absolute;width:5px;height:5px;border-radius:50%;
-  right:8px;top:8px;background:#d3b6fa;box-shadow:0 0 12px #b99bff;
+.gv-author-monogram {
+  color:color-mix(in srgb,var(--blue) 72%,var(--text));
+  font-family:var(--heading);
+  font-weight:700;
+  font-size:12px;
+  line-height:1;
+  letter-spacing:-.105em;
+  padding-right:1.2px;
 }
-.gv-author-lockup{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
-.gv-author-caption{
-  font-size:9px;line-height:1.1;letter-spacing:.28em;font-weight:800;
-  color:#8e9bc6;margin:0 0 5px 3px;
+.gv-author-copy {
+  display:flex;
+  align-items:baseline;
+  gap:4px;
+  white-space:nowrap;
+  font-size:11px;
+  line-height:1.4;
 }
-.gv-author-signature{display:flex;align-items:baseline;position:relative;gap:8px;white-space:nowrap;padding-right:12px}
-.gv-author-by{
-  color:#a9b4d3;font-size:12px;font-weight:700;letter-spacing:.04em;
-}
-.gv-author-name{
-  position:relative;display:inline-block;
-  font-family:"Allura","Brush Script MT","Segoe Script",cursive;
-  font-size:clamp(42px,3.5vw,54px);font-weight:400;line-height:.95;letter-spacing:.01em;
-  color:#e9dcff;background:linear-gradient(112deg,#e8efff 7%,#becbff 48%,#e3b9fd 94%);
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-  filter:drop-shadow(0 1px 10px rgba(128,104,211,.27));
-}
-.gv-author-name::after{
-  content:"";position:absolute;height:2px;bottom:-5px;left:12%;width:87%;
-  border-radius:90%;transform:rotate(-3deg);
-  background:linear-gradient(90deg,transparent,#95a6ff 18%,#d4a7f0 80%,transparent);
-  opacity:.72;
-}
-.gv-author-spark{font-size:12px;align-self:center;color:#c6afff;filter:drop-shadow(0 0 6px #8d7de0)}
-.gv-author-aside{
-  display:flex;align-items:center;gap:15px;flex-shrink:0;
-  font-size:9px;letter-spacing:.17em;font-weight:750;color:#7082aa;text-align:right;
-}
-.gv-author-aside-rule{display:inline-block;width:28px;height:1px;background:linear-gradient(90deg,transparent,#9b9cdf)}
-@media(max-width:950px){
-  .gv-author-aside{display:none}
-}
-@media(max-width:720px){
-  .app-footer.gv-author-footer{
-    display:flex;min-height:111px;justify-content:center;padding:17px 16px calc(97px + env(safe-area-inset-bottom));
+.gv-author-label {font-weight:400;color:var(--faint)}
+.gv-author-name {font-weight:700;color:var(--sub);letter-spacing:.008em}
+@media(max-width:720px) {
+  .app-footer.gv-author-footer {
+    display:flex;
+    min-height:54px;
+    justify-content:center;
+    padding:10px 16px calc(86px + env(safe-area-inset-bottom));
   }
-  .main-view{padding-bottom:27px}
-  .gv-author-brand{gap:14px}
-  .gv-author-seal{width:44px;height:44px;border-radius:14px;font-size:15px}
-  .gv-author-caption{font-size:8px}
-  .gv-author-name{font-size:clamp(37px,10vw,49px)}
-  .gv-author-by{font-size:11px}
+  .main-view {padding-bottom:27px}
 }
-@media(max-width:360px){
-  .gv-author-seal{width:39px;height:39px}
-  .gv-author-name{font-size:37px}
-  .gv-author-brand{gap:10px}
-}
-@media(prefers-reduced-motion:reduce){
-  .gv-author-seal,.gv-author-name{transition:none}
+@media(max-width:360px) {
+  .gv-author-credit {gap:8px}
+  .gv-author-mark {flex-basis:27px;width:27px;height:27px}
+  .gv-author-copy {font-size:10.5px}
 }

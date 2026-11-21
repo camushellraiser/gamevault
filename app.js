@@ -27,8 +27,21 @@
   function uniqueCopy(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
   const coverPlatform = {requiem:'ps5',gtavi:'ps5',spider2:'ps5',miles:'ps5',astro:'ps5',minecraft:'switch',smash:'switch'};
   function candidateCover(c,platform){return c.cover && coverPlatform[c.key]===platform?c.cover:'';}
-  function cover(g,mark=true){let c=getCat(g),title=gameTitle(g),url=safeUrl(g.coverUrl||candidateCover(c,g.platform)),p=getPlatform(g.platform),initials=title.split(/\s+/).slice(0,3).map(x=>x[0]||'').join('');let themes={ps5:['#334d9e','#0a173d'],ps4:['#3257b0','#16233f'],switch:['#c33951','#301221'],switch2:['#bd4c3b','#361c2a'],pc:['#167d8f','#11233e']};let [t1,t2]=themes[g.platform]||themes.ps5;
-    return `<div class="cover-frame" style="--cover1:${t1};--cover2:${t2}"><div class="cover-fallback"><span class="fallback-platform">${esc(p.short.toUpperCase())} · COVER PREVIEW</span><div class="fallback-title">${esc(title)}</div><div class="fallback-mark">${esc(initials)}</div></div>${url?`<img loading="lazy" src="${esc(url)}" alt="Cover candidate: ${esc(title)}" onload="this.style.opacity='1'" onerror="this.remove()" />`:''}${mark?`<span class="cover-flag">${esc(p.short)}</span>`:''}${mark&&!g.coverVerified?'<span class="cover-warning" title="Cover is a candidate and has not been verified as the exact US platform edition">ART TO REVIEW</span>':''}</div>`;}
+  // Visual-only classification: product photography benefits from a slightly tighter crop.
+  // Do not change the stored cover URL, edition, platform, or review status.
+  function coverStyle(url) {
+    const src=String(url||'').toLowerCase();
+    return /(?:walmartimages|falabella|icuracao|scene7|vtexassets|awsli|shopify|target|americanas|mercadolibre|amazon|cdn\.shopify|cdn\.awsli|produto\/|guest_)/.test(src)?'boxed':'art';
+  }
+  function cover(g,mark=true) {
+    const c=getCat(g),title=gameTitle(g),url=safeUrl(g.coverUrl||candidateCover(c,g.platform));
+    const p=getPlatform(g.platform),initials=title.split(/\s+/).slice(0,3).map(x=>x[0]||'').join('');
+    const themes={ps5:['#334d9e','#0a173d'],ps4:['#3257b0','#16233f'],switch:['#c33951','#301221'],switch2:['#bd4c3b','#361c2a'],pc:['#167d8f','#11233e']};
+    const [t1,t2]=themes[g.platform]||themes.ps5,style=coverStyle(url);
+    const backdrop=url?`<img class="cover-backdrop" loading="lazy" decoding="async" src="${esc(url)}" alt="" aria-hidden="true"/>`:'';
+    const face=url?`<div class="cover-surface cover-surface--${style}"><img class="cover-image" loading="lazy" decoding="async" src="${esc(url)}" alt="Cover candidate: ${esc(title)}" onload="this.style.opacity='1';this.closest('.cover-frame')?.classList.add('is-loaded')" onerror="this.closest('.cover-frame')?.classList.remove('is-loaded');this.closest('.cover-frame')?.querySelector('.cover-backdrop')?.remove();this.closest('.cover-surface')?.remove()" /></div>`:'';
+    return `<div class="cover-frame" style="--cover1:${t1};--cover2:${t2}">${backdrop}<div class="cover-fallback"><span class="fallback-platform">${esc(p.short.toUpperCase())} · COVER PREVIEW</span><div class="fallback-title">${esc(title)}</div><div class="fallback-mark">${esc(initials)}</div></div>${face}${mark?`<span class="cover-flag">${esc(p.short)}</span>`:''}${mark&&!g.coverVerified?'<span class="cover-warning" title="Cover is a candidate and has not been verified as the exact US platform edition">ART TO REVIEW</span>':''}</div>`;
+  }
   function toast(message,type=''){let root=document.getElementById('toast-root');root.innerHTML=`<div class="toast ${type}">${esc(message)}</div>`;clearTimeout(window.gvToastTimer);window.gvToastTimer=setTimeout(()=>root.innerHTML='',4000);}
   function setNav(v){app.view=v;document.querySelectorAll('[data-nav]').forEach(n=>n.classList.toggle('active',n.dataset.nav===v));document.getElementById('breadcrumb-label').textContent=({library:'My Library',add:'Add Game',bulk:'Bulk Import',trash:'Recently Deleted'})[v]||'My Library';render();scrollTo({top:0,behavior:'smooth'});}
   function platformNav(){let html=allPlatforms.map(p=>`<button class="nav-item ${app.platform===p.id&&app.view==='library'?'active':''}" data-platform-nav="${p.id}"><span class="platform-dot" style="background:${p.color}"></span><span>${esc(p.label)}</span><span class="nav-count">${countPlatform(p.id)}</span></button>`).join('');document.getElementById('sidebar-platforms').innerHTML=html;document.getElementById('nav-game-count').textContent=activeGames().length;}

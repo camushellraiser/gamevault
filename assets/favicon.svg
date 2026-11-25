@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="GameVault icon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B2556"/>
+      <stop offset=".48" stop-color="#0A1232"/>
+      <stop offset="1" stop-color="#28075B"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#44D4FF"/>
+      <stop offset=".31" stop-color="#236EE8"/>
+      <stop offset="1" stop-color="#152555"/>
+    </linearGradient>
+    <linearGradient id="front" x1=".05" y1="0" x2=".94" y2="1">
+      <stop stop-color="#48D4FF"/>
+      <stop offset=".2" stop-color="#287CF2"/>
+      <stop offset=".59" stop-color="#252B84"/>
+      <stop offset="1" stop-color="#7C37E3"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#B084FF"/>
+      <stop offset=".56" stop-color="#7341DA"/>
+      <stop offset="1" stop-color="#22215C"/>
+    </linearGradient>
+    <linearGradient id="cradle" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#2A5DAA"/>
+      <stop offset=".5" stop-color="#172D68"/>
+      <stop offset="1" stop-color="#3E1B88"/>
+    </linearGradient>
+    <linearGradient id="glyph" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ECF7FF"/>
+      <stop offset=".5" stop-color="#AAC5FF"/>
+      <stop offset="1" stop-color="#E6AFFF"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#6FD8FF"/>
+      <stop offset=".56" stop-color="#8F8BFF"/>
+      <stop offset="1" stop-color="#A767FF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".45" cy=".75" r=".75">
+      <stop stop-color="#693AFA" stop-opacity=".38"/>
+      <stop offset="1" stop-color="#0A1030" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="252" height="252" rx="54" fill="url(#bg)"/>
+  <rect x="2" y="2" width="252" height="252" rx="54" fill="url(#glow)"/>
+  <rect x="2.8" y="2.8" width="250.4" height="250.4" rx="53" fill="none" stroke="url(#rim)" stroke-opacity=".72" stroke-width="2"/>
+  <rect x="41" y="70" width="90" height="123" rx="17" fill="url(#blue)" stroke="#66B6FF" stroke-width="3" transform="rotate(-9 85 130)"/>
+  <rect x="123" y="71" width="90" height="123" rx="17" fill="url(#violet)" stroke="#B581FF" stroke-width="3" transform="rotate(9 168 132)"/>
+  <rect x="70" y="49" width="116" height="160" rx="22" fill="url(#front)" stroke="url(#rim)" stroke-width="4"/>
+  <path d="M74 92 L150 52 L182 52 L74 157 Z" fill="#B2E7FF" opacity=".13"/>
+  <g fill="url(#glyph)" stroke="#DBE8FF" stroke-opacity=".4" stroke-width="1">
+    <rect x="119" y="94" width="25" height="25" rx="7" transform="rotate(45 131.5 106.5)"/>
+    <rect x="91" y="123" width="25" height="25" rx="7" transform="rotate(45 103.5 135.5)"/>
+    <rect x="147" y="123" width="25" height="25" rx="7" transform="rotate(45 159.5 135.5)"/>
+    <rect x="119" y="152" width="25" height="25" rx="7" transform="rotate(45 131.5 164.5)"/>
+  </g>
+  <path d="M29 158 Q31 148 44 148 L55 148 Q67 148 78 166 Q85 178 101 178 L151 178 Q168 178 177 163 Q185 150 198 150 L209 150 Q224 150 227 161 L222 196 Q219 216 200 220 L55 220 Q35 216 32 196 Z" fill="url(#cradle)" stroke="url(#rim)" stroke-width="3.2"/>
+  <path d="M32 157 Q40 150 54 154 Q70 156 80 177 Q88 190 108 190 L148 190 Q169 190 179 174 Q187 158 201 155 Q213 153 223 160" fill="none" stroke="#A5AEFF" stroke-opacity=".65" stroke-width="2.4"/>
+</svg>
